@@ -46,9 +46,24 @@
       font-weight: bold;
       margin-right: 5px;
     }
+    .loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      z-index: 2000;
+      font-size: 1.2em;
+    }
   </style>
 </head>
 <body>
+  <div class="loading">Loading video...</div>
   <a href="/" class="back-button">Back to Gallery</a>
   
   <iframe 
@@ -59,17 +74,22 @@
   </iframe>
 
   <script>
-    // Get video ID from URL path (assuming /v/VIDEO_ID format)
+    // Get video ID from URL path
     const path = window.location.pathname;
     const videoId = path.split('/').filter(Boolean).pop();
     
-    // Set iframe source
+    // Set iframe source to EMBED URL (critical fix)
     if (videoId) {
-      document.getElementById('video-frame').src = `https://sendvid.com/${videoId}`;
+      document.getElementById('video-frame').src = `https://sendvid.com/embed/${videoId}`;
+      
+      // Hide loading screen after a moment
+      setTimeout(() => {
+        document.querySelector('.loading').style.display = 'none';
+      }, 1000);
     }
     
-    // Handle video clicks for monetization
-    function goToVideo(newVideoId) {
+    // For testing related videos
+    window.goToVideo = function(newVideoId) {
       // Open new video in new tab
       window.open(`/v/${newVideoId}`, '_blank');
       
