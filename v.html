@@ -1,100 +1,143 @@
+<!-- Modified v.html -->
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Loading Video...</title>
+  <!-- ... existing styles ... -->
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    html, body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      position: relative;
-    }
-    #video-frame {
-      width: 100%;
-      height: 100%;
-      border: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-    }
-    .back-button {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      background: rgba(0, 0, 0, 0.6);
-      color: white;
-      padding: 10px 15px;
-      border-radius: 5px;
-      text-decoration: none;
-      z-index: 1000;
-      font-weight: bold;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .back-button:hover {
-      background: rgba(0, 0, 0, 0.8);
-    }
-    .back-button:before {
-      content: "←";
-      font-weight: bold;
-      margin-right: 5px;
-    }
-    .loading {
+    /* ADDED: Click-to-play overlay */
+    .play-overlay {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: #000;
+      background: rgba(0,0,0,0.7);
+      z-index: 3000;
       display: flex;
       align-items: center;
       justify-content: center;
+      cursor: pointer;
+    }
+    .play-button {
+      width: 80px;
+      height: 80px;
+      background: red;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .play-button::after {
+      content: "▶";
+      font-size: 40px;
       color: white;
+    }
+    
+    /* ADDED: Related videos styling */
+    .related-videos {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(0,0,0,0.8);
+      padding: 15px;
       z-index: 2000;
-      font-size: 1.2em;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+    .related-item {
+      cursor: pointer;
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+      padding-bottom: 56.25%; /* 16:9 aspect */
+    }
+    .related-thumb {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
   </style>
 </head>
 <body>
-  <div class="loading">Loading video...</div>
+  <div class="loading">Preparing video player...</div>
   <a href="/" class="back-button">Back to Gallery</a>
+  
+  <!-- ADDED: Click overlay -->
+  <div class="play-overlay" id="play-overlay">
+    <div class="play-button"></div>
+  </div>
   
   <iframe 
     id="video-frame"
     src=""
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-    allowfullscreen>
+    allow="autoplay; fullscreen"
+    sandbox="allow-same-origin allow-scripts allow-popups"
+    style="display:none"> <!-- Hidden until click -->
   </iframe>
+  
+  <!-- ADDED: Related videos container -->
+  <div class="related-videos" id="related-videos"></div>
 
   <script>
-    // Get video ID from URL path
+    // 1. Get video ID from URL
     const path = window.location.pathname;
     const videoId = path.split('/').filter(Boolean).pop();
     
-    // Set iframe source to EMBED URL (critical fix)
-    if (videoId) {
-      document.getElementById('video-frame').src = `https://sendvid.com/embed/${videoId}`;
-      
-      // Hide loading screen after a moment
-      setTimeout(() => {
-        document.querySelector('.loading').style.display = 'none';
-      }, 1000);
-    }
+    // 2. DOM elements
+    const iframe = document.getElementById('video-frame');
+    const overlay = document.getElementById('play-overlay');
+    const loading = document.querySelector('.loading');
+    const relatedContainer = document.getElementById('related-videos');
     
-    // For testing related videos
-    window.goToVideo = function(newVideoId) {
-      // Open new video in new tab
-      window.open(`/v/${newVideoId}`, '_blank');
+    // 3. Video data - would come from API in real implementation
+    const videoData = {
+      '3al2km1n': { title: 'Mountain Adventure', related: ['q51kmonl', '10kj2ma4'] },
+      'q51kmonl': { title: 'Ocean Waves', related: ['3al2km1n', 'clciiads'] },
+      // ... other videos
+    };
+    
+    // 4. Initialize player
+    if (videoId) {
+      // Set iframe source (without autoplay first)
+      iframe.src = `https://sendvid.com/embed/${videoId}`;
       
-      // Redirect current tab to smartlink
-      window.location.href = 'https://wikipedia.org';
+      // Hide loading when iframe ready
+      iframe.addEventListener('load', () => {
+        loading.style.display = 'none';
+        overlay.style.display = 'flex'; // Show play button
+      });
+      
+      // 5. Click-to-play handler
+      overlay.addEventListener('click', () => {
+        // Rebuild iframe with autoplay parameter
+        iframe.src = `https://sendvid.com/embed/${videoId}?autoplay=1`;
+        iframe.style.display = 'block';
+        overlay.style.display = 'none';
+        
+        // Load related videos
+        loadRelatedVideos(videoId);
+      });
+      
+      // 6. Related videos loader
+      function loadRelatedVideos(currentId) {
+        const relatedIds = videoData[currentId]?.related || [];
+        relatedContainer.innerHTML = relatedIds.map(id => `
+          <div class="related-item" onclick="openRelated('${id}')">
+            <img src="https://via.placeholder.com/300x169?text=Thumb+${id}" 
+                 class="related-thumb"
+                 alt="${videoData[id]?.title || 'Video'}">
+          </div>
+        `).join('');
+      }
+      
+      // 7. Related video opener
+      window.openRelated = function(newId) {
+        iframe.src = `https://sendvid.com/embed/${newId}?autoplay=1`;
+        loadRelatedVideos(newId);
+      }
     }
   </script>
 </body>
